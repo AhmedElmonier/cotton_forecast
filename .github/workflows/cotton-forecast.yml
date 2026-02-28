@@ -1,0 +1,36 @@
+name: Daily Cotton Forecast
+
+on:
+  schedule:
+    # This runs 4 times a day (06:00, 10:00, 14:00, 19:00 UTC) which roughly corresponds to 8am, 12pm, 4pm, 9pm local time (+02:00)
+    - cron: '0 6,10,14,19 * * *'
+  
+  # This allows you to run the workflow manually from the GitHub website for testing
+  workflow_dispatch:
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run scheduled forecast script
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          # Use the one-shot job instead of the interactive bot
+          python src/job_forecast.py
