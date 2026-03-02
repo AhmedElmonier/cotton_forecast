@@ -23,6 +23,8 @@ def format_alert_message(insights: dict) -> str:
     msg += f"• *Momentum (RSI):* {insights['rsi_signal']}\n"
     if 'sentiment_label' in insights:
         msg += f"• *News Sentiment:* {insights['sentiment_label']} (Score: {insights['sentiment_score']:.2f} based on {insights['sentiment_count']} articles)\n\n"
+        if 'sentiment_summary' in insights and insights['sentiment_summary']:
+            msg += f"📰 *AI Market Summary:*\n_{insights['sentiment_summary']}_\n\n"
     else:
         msg += "\n"
     

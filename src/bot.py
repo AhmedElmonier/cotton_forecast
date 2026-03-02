@@ -76,6 +76,8 @@ async def price_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         msg += f"• *Trend:* {tech_trend}\n"
         msg += f"• *Momentum (RSI):* {rsi_signal} (Value: {rsi_14:.2f})\n"
         msg += f"• *News Sentiment:* {sentiment['label']} (Score: {sentiment['score']:.2f})\n\n"
+        if sentiment.get('summary'):
+            msg += f"📰 *AI Market Summary:*\n_{sentiment['summary']}_\n\n"
         msg += f"📉 *20-Day SMA:* ${sma_20:.2f} | *50-Day SMA:* ${sma_50:.2f}\n"
 
         await update.message.reply_text(msg, parse_mode="Markdown")
@@ -106,6 +108,7 @@ async def forecast_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         insights['sentiment_label'] = sentiment['label']
         insights['sentiment_score'] = sentiment['score']
         insights['sentiment_count'] = sentiment['article_count']
+        insights['sentiment_summary'] = sentiment.get('summary')
         
         msg = format_alert_message(insights)
         chart_path = generate_forecast_chart(process_df, forecast_df)
