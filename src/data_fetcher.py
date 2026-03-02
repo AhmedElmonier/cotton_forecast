@@ -14,7 +14,9 @@ def fetch_all_data(period: str = "5y") -> pd.DataFrame:
     try:
         # Download all three tickers at once
         tickers = "CT=F DX-Y.NYB ^TNX"
-        df = yf.download(tickers, period=period, group_by='ticker', progress=False)
+        
+        # Disabling threads prevents the underlying yfinance SQLite cache from creating concurrency locks
+        df = yf.download(tickers, period=period, group_by='ticker', progress=False, threads=False)
         
         if df.empty:
             logger.warning("Fetched an empty DataFrame.")
