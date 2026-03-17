@@ -10,10 +10,10 @@ def fetch_all_data(period: str = "5y") -> pd.DataFrame:
     Fetches historical data for Gold futures, US Dollar Index, and 10Y Treasury Yield.
     Merges them into a single DataFrame.
     """
-    logger.info(f"Fetching Cotton (CT=F), USD Index (DXY), and 10Y Yield (^TNX) for the last {period}...")
+    logger.info(f"Fetching Cotton (CT=F), USD Index (^DXY), and 10Y Yield (^TNX) for the last {period}...")
     try:
         # Download all three tickers at once
-        tickers = "CT=F DXY ^TNX"
+        tickers = "CT=F ^DXY ^TNX"
         
         # Disabling threads prevents the underlying yfinance SQLite cache from creating concurrency locks
         df = yf.download(tickers, period=period, group_by='ticker', progress=False, threads=False)
@@ -24,7 +24,7 @@ def fetch_all_data(period: str = "5y") -> pd.DataFrame:
             
         # Extract the 'Close' prices for each asset
         cotton_close = df['CT=F']['Close'].rename('Close')
-        dxy_close = df['DXY']['Close'].rename('USD_Index')
+        dxy_close = df['^DXY']['Close'].rename('USD_Index')
         tnx_close = df['^TNX']['Close'].rename('Treasury_Yield')
         
         # Merge them based on the Date index
