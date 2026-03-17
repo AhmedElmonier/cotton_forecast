@@ -7,13 +7,13 @@ logger = logging.getLogger(__name__)
 
 def fetch_all_data(period: str = "5y") -> pd.DataFrame:
     """
-    Fetches historical data for Gold futures, US Dollar Index, and 10Y Treasury Yield.
+    Fetches historical data for Cotton futures, USD Index ETF (UUP), and 10Y Treasury Yield.
     Merges them into a single DataFrame.
     """
-    logger.info(f"Fetching Cotton (CT=F), USD Index (^DXY), and 10Y Yield (^TNX) for the last {period}...")
+    logger.info(f"Fetching Cotton (CT=F), USD Index (UUP), and 10Y Yield (^TNX) for the last {period}...")
     try:
-        # Download all three tickers at once
-        tickers = "CT=F ^DXY ^TNX"
+        # Download tickers. Using UUP as a robust alternative to ^DXY which often fails in yfinance
+        tickers = "CT=F UUP ^TNX"
         
         # Disabling threads prevents the underlying yfinance SQLite cache from creating concurrency locks
         df = yf.download(tickers, period=period, group_by='ticker', progress=False, threads=False)
@@ -24,7 +24,8 @@ def fetch_all_data(period: str = "5y") -> pd.DataFrame:
             
         # Extract the 'Close' prices for each asset
         cotton_close = df['CT=F']['Close'].rename('Close')
-        dxy_close = df['^DXY']['Close'].rename('USD_Index')
+        # Use UUP as USD_Index
+        dxy_close = df['UUP']['Close'].rename('USD_Index')
         tnx_close = df['^TNX']['Close'].rename('Treasury_Yield')
         
         # Merge them based on the Date index
@@ -66,6 +67,16 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     df['SMA_50'] = ta.sma(df['Close'], length=50)
     df['RSI_14'] = ta.rsi(df['Close'], length=14)
     
+    # Safety Check: If regressors are entirely NaN, fill them to prevent dropna() from wiping the df
+    # This can happen if a ticker download fails partially
+    for col in ['USD_Index', 'Treasury_Yield']:
+        if col in df.columns and df[col].isna().all():
+            logger.warning(f"Regressor {col} is entirely NaN. Filling with 0.0 to prevent data loss.")
+            df[col] = 0.0
+        elif col in df.columns:
+            # Fill remaining individual NaNs with forward fill then back fill
+            df[col] = df[col].ffill().bfill()
+
     processed_df = df.reset_index()[['Date', 'Close', 'SMA_20', 'SMA_50', 'RSI_14', 'USD_Index', 'Treasury_Yield']]
     
     # Ensure Date column is timezone un-aware to avoid Prophet warnings
@@ -74,9 +85,13 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     processed_df.rename(columns={'Date': 'ds', 'Close': 'y'}, inplace=True)
     
     # Drop NaNs that exist at the start of the dataframe due to rolling windows (e.g., the first 50 days)
+    initial_len = len(processed_df)
     processed_df.dropna(inplace=True)
     
-    logger.info(f"Data preprocessed. Shape: {processed_df.shape}")
+    if len(processed_df) < 2:
+        logger.error(f"Preprocessing resulted in only {len(processed_df)} rows. Possible data issue.")
+        
+    logger.info(f"Data preprocessed. Shape: {processed_df.shape} (Dropped {initial_len - len(processed_df)} rows due to indicators)")
     return processed_df
 
 if __name__ == "__main__":
